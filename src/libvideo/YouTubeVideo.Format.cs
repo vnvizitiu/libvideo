@@ -53,12 +53,16 @@ namespace VideoLibrary
                     case 271:
                     case 272:
                     case 278:
+                    case 313:
                         return AdaptiveKind.Video;
                     case 139:
                     case 140:
                     case 141:
                     case 171:
                     case 172:
+                    case 249:
+                    case 250:
+                    case 251:
                         return AdaptiveKind.Audio;
                     default:
                         return AdaptiveKind.None;
@@ -74,6 +78,7 @@ namespace VideoLibrary
                 {
                     case 5:
                     case 6:
+                    case 250:
                         return 64;
                     case 17:
                         return 24;
@@ -103,7 +108,10 @@ namespace VideoLibrary
                     case 84:
                     case 85:
                         return 152;
+                    case 251:
+                        return 160;
                     case 139:
+                    case 249:
                         return 48;
                     case 141:
                         return 256;
@@ -163,6 +171,7 @@ namespace VideoLibrary
                         return 520;
                     case 138:
                     case 272:
+                    case 313:
                         return 2160;
                     case 264:
                     case 271:
@@ -225,6 +234,10 @@ namespace VideoLibrary
                     case 278:
                     case 171:
                     case 172:
+                    case 249:
+                    case 250:
+                    case 251:
+                    case 313:
                         return VideoFormat.WebM;
                     default:
                         return VideoFormat.Unknown;
@@ -268,6 +281,10 @@ namespace VideoLibrary
                     case 171:
                     case 172:
                         return AudioFormat.Vorbis;
+                    case 249:
+                    case 250:
+                    case 251:
+                        return AudioFormat.Opus;
                     default:
                         return AudioFormat.Unknown;
                 }

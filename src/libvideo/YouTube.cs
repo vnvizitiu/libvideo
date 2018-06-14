@@ -11,6 +11,8 @@ namespace VideoLibrary
 {
     public class YouTube : ServiceBase<YouTubeVideo>
     {
+        private const string Playback = "videoplayback";
+
         public static YouTube Default { get; } = new YouTube();
 
         internal async override Task<IEnumerable<YouTubeVideo>> GetAllVideosAsync(
@@ -56,7 +58,11 @@ namespace VideoLibrary
         {
             string title = Html.GetNode("title", source);
 
-            string jsPlayer = "http:" + Json.GetKey("js", source).Replace(@"\/", "/");
+            string jsPlayer = ParseJsPlayer(source);
+            if (jsPlayer == null)
+            {
+                yield break;
+            }
 
             string map = Json.GetKey("url_encoded_fmt_stream_map", source);
             var queries = map.Split(',').Select(Unscramble);
@@ -78,23 +84,46 @@ namespace VideoLibrary
 
                     var manifest = hc.GetStringAsync(temp)
                         .GetAwaiter().GetResult()
-                        .Replace(@"\/", "/")
-                        .Replace("%2F", "/");
+                        .Replace(@"\/", "/");
 
                     var uris = Html.GetUrisFromManifest(manifest);
 
                     foreach (var v in uris)
                     {
                         yield return new YouTubeVideo(title,
-                            new UnscrambledQuery(v, false),
-                            jsPlayer, true);
+                            UnscrambleManifestUri(v),
+                            jsPlayer);
                     }
                 }
             }
-            else queries = adaptiveMap.Split(',').Select(Unscramble);
+            else
+            {
+                queries = adaptiveMap.Split(',').Select(Unscramble);
+                foreach (var query in queries)
+                    yield return new YouTubeVideo(title, query, jsPlayer);
+            }
+        }
 
-            foreach (var query in queries)
-                yield return new YouTubeVideo(title, query, jsPlayer);
+        private string ParseJsPlayer(string source)
+        {
+            string jsPlayer = Json.GetKey("js", source).Replace(@"\/", "/");
+            if (string.IsNullOrWhiteSpace(jsPlayer))
+            {
+                return null;
+            }
+
+            if (jsPlayer.StartsWith("/yts"))
+            {
+                return $"https://www.youtube.com{jsPlayer}";
+            }
+
+            // Fall back on old implementation (not sure it's needed)
+            if (!jsPlayer.StartsWith("http"))
+            {
+                jsPlayer = $"https:{jsPlayer}";
+            }
+            
+            return jsPlayer;
         }
 
         // TODO: Consider making this static...
@@ -136,6 +165,29 @@ namespace VideoLibrary
                 result += "&fallback_host=" + host;
 
             return result;
+        }
+
+        private UnscrambledQuery UnscrambleManifestUri(string manifestUri)
+        {
+            int start = manifestUri.IndexOf(Playback) + Playback.Length;
+            string baseUri = manifestUri.Substring(0, start);
+            string parametersString = manifestUri.Substring(start, manifestUri.Length - start);
+            var parameters = parametersString.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            var builder = new StringBuilder(baseUri);
+            builder.Append("?");
+            for (var i = 0; i < parameters.Length; i += 2)
+            {
+                builder.Append(parameters[i]);
+                builder.Append('=');
+                builder.Append(parameters[i + 1].Replace("%2F", "/"));
+                if (i < parameters.Length - 2)
+                {
+                    builder.Append('&');
+                }
+            }
+
+            return new UnscrambledQuery(builder.ToString(), false);
         }
     }
 }
